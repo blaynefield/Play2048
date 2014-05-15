@@ -1,6 +1,44 @@
 import java.io.*;
 import java.util.*;
 
+class Perceptron {
+  private double[] weights;
+  private int size;
+  private double rate;
+
+  public Perceptron(int size, double rate) {
+    weights = new double[size+1];
+    this.size = size;
+    for (int i = 0; i < size; i++) {
+      weights[i] = Math.random() / 100;
+    }
+    weights[size] = Math.random() / 100;
+    this.rate = 0.05;
+  }
+
+  public double compute(double[] values, int action) {
+    double score = 0.0;
+//    System.out.println("weights: " + weights);
+    for (int i = 0; i < size; i++) {
+      score += weights[i] * values[i];
+    }
+    score += weights[size] * 1.0 * action;
+ //   System.out.println("score: " + score);
+    return score;
+  }
+
+  public void train(double[] values, int action, double actual) {
+    rate *= 0.99;
+    double guess = compute(values, action);
+    for (int i = 0; i < size; i++) {
+      weights[i] += rate * values[i] * (actual - guess);
+    }
+    weights[size] += rate * action * (actual - guess);
+  }
+}
+    
+    
+
 class ScoreMove {
   private double score;
   private String move;
@@ -15,6 +53,7 @@ class BoardLearner {
   public BoardLearner() {
     map = new HashMap<String,Double>();
   }
+
 
   public double score(String str) {
     if (map.containsKey(str)) {
@@ -39,7 +78,18 @@ class Board {
   private int rows;
   private int cols;
   public int score;
-  
+
+  public double[] getBoardValues() {
+    double[] values = new double[rows*cols];
+    int j = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        values[j++] = 1.0 * cells[r][c];
+      }
+    }
+
+    return values;
+  }
 
   public Board() {
     rows = 4;
@@ -440,14 +490,59 @@ class Board {
 class ActionScore {
   public String action;
   public double score;
+  public int actint;
   public ActionScore(String action, double score) {
     this.action = action;
     this.score = score;
+  }
+  public ActionScore(String action, double score, int actint) {
+    this.action = action;
+    this.score = score;
+    this.actint = actint;
   }
 }
 
 
 public class Play2048 {
+  public static ActionScore bestAction(Perceptron p, Board b) {
+    double best = 0.0;
+    double reward;
+    String action = "left";
+    double[] values = b.getBoardValues();
+    double score;
+    int actint = 0;
+
+    score = p.compute(values, 0);//
+    //System.out.println("score: " + score);
+    if (score > best) {
+      best = score;
+      action = "left";
+      actint = 0;
+    }
+    score = p.compute(values, 1);//
+    //System.out.println("score: " + score);
+    if (score > best) {
+      best = score;
+      action = "right";
+      actint = 1;
+    }
+    score = p.compute(values, 2);//
+    //System.out.println("score: " + score);
+    if (score > best) {
+      best = score;
+      action = "up";
+      actint = 2;
+    }
+    score = p.compute(values, 3);//
+    //System.out.println("score: " + score);
+    if (score > best) {
+      best = score;
+      action = "down";
+      actint = 3;
+    }
+    return new ActionScore(action, best, actint);
+  }
+    
   public static ActionScore bestAction(BoardLearner bl, String stateString) {
     double best = 0.0;
     double reward;
@@ -477,41 +572,50 @@ public class Play2048 {
   }
 
   public static void main(String[] args) {
+    double learn_rate = 0.1;
     double discount = 0.5;
     BoardLearner bl = new BoardLearner();
   
-/*
+    Perceptron p = new Perceptron(16, 0.1);
     for (int j = 0; j < 100; j++) {
       Board b = new Board();
       b.fillRandomCell();
       b.fillRandomCell();
       int i = 0;
       while (i++ < 5000 && b.gameState() == 1) {
-        String stateString = b.toString(); 
-        ActionScore as = Play2048.bestAction(bl, stateString);
+        ActionScore as = Play2048.bestAction(p, b);
+        double[] vals = b.getBoardValues();
+
+        //System.out.println("actint: " + as.actint);
   
+        double rand = Math.random();
         int oldScore = b.score;
-        if (as.action.equals("left")) {
+        if (rand < 0.01 || as.action.equals("left")) {
           b.shiftLeft();
-        } else if (as.action.equals("right")) {
+        } else if (rand < 0.02 || as.action.equals("right")) {
           b.shiftRight();
-        } else if (as.action.equals("down")) {
+        } else if (rand < 0.03 || as.action.equals("down")) {
           b.shiftDown();
         } else {
           b.shiftUp();
         }
         int reward = b.score - oldScore;
-      //  System.out.println("reward: " + reward);
+    //    System.out.println("reward: " + reward);
   
         b.fillRandomCell();
         
-        ActionScore as_prime = Play2048.bestAction(bl, b.toString());
-        bl.update(stateString + ":" + as.action, reward, as.score);
+        ActionScore as_prime = Play2048.bestAction(p, b);
+        double oldValue = as.score;
+        double newValue = oldValue + learn_rate * (reward + discount * as_prime.score - oldValue);
+     //   System.out.println("old -> new: " + oldValue + " -> " + newValue);
+        p.train(vals, as.actint, newValue);
+        //double oldScore =score(state);
+    //map.put(state, oldScore + learn_rate * (reward + discount * est - oldScore));
       }
 
       System.out.println("Board:\n" + b);
     }
-*/
+/*
     Board b = new Board();
     b.fillRandomCell();
     b.fillRandomCell();
@@ -563,5 +667,6 @@ public class Play2048 {
 //      state = b.gameState();
     }
     System.out.println("Final board:\n" + b);
+*/
   }
 }
