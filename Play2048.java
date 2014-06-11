@@ -41,7 +41,6 @@ class Perceptron {
   }
 }
     
-    
 
 class ScoreMove {
   private double score;
@@ -418,8 +417,47 @@ class Board implements Comparator<Board> {
       double g3 = copyLeft().expectedGoodnessRecursive(depth-1);
       double g4 = copyRight().expectedGoodnessRecursive(depth-1);
 */
+/*
+  private double expectedGoodnessRecursive(int depth, double alpha, double beta, HashMap<String, Double> map) {
+    if (gameState() != 1) { return gameState(); }//;//gameState(); }
+    if (depth == 0) { return -1.0 * badness(); }
+
+    String state = toString() + ":" + depth;
+    if (map.containsKey(state)) {
+      return map.get(state);
+    }
+    
+    if (depth % 2 == 0) {
+      double max_up_down = -100000;
+      if (up_down() > 0) {
+        //System.out.println("up: ");
+        double g1 = copyUp().expectedGoodnessRecursive(depth-1, alpha, beta, map);
+        alpha = Math.max(alpha, g1);
+        if (beta < alpha) { return alpha; } 
+        //System.out.println("down: ");
+        double g2 = copyDown().expectedGoodnessRecursive(depth-1, alpha, beta, map);
+        alpha = Math.max(alpha, g2);
+        if (beta < alpha) { return alpha; } 
+        //max_up_down = Math.max(g1, g2);
+      }
+      double max_side_side = -100000;
+      if (side_side() > 0) {
+        //System.out.println("left: ");
+        double g3 = copyLeft().expectedGoodnessRecursive(depth-1, alpha, beta, map);
+        alpha = Math.max(alpha, g3);
+        if (beta < alpha) { return alpha; } 
+        //System.out.println("right: ");
+        double g4 = copyRight().expectedGoodnessRecursive(depth-1, alpha, beta, map);
+        alpha = Math.max(alpha, g4);
+        if (beta < alpha) { return alpha; } 
+        max_side_side = Math.max(g3, g4);
+      }
+>>>>>>> a8cb364a6bab70335be5075ee03139d9909753c9
+>>>>>>> */
       
-      return Math.max(Math.max(g1, g2), Math.max(g3, g4));
+      double max = alpha;//Math.max(max_up_down, max_side_side);
+      map.put(state, max);
+      return alpha;
     } else {
       double good = 0.0;
       double min = 1000000.0;
@@ -434,18 +472,55 @@ class Board implements Comparator<Board> {
             if (score < min) { min = score; }
             score = copy(r,c,2).expectedGoodnessRecursive(depth-1); 
      //       System.out.println("min cand: "  + score);
+/*
+            count++;
+            Board b = new Board(this);
+            b.cells[r][c] = 4;
+            score = b.expectedGoodnessRecursive(depth-1, alpha, beta, map); 
+            beta = Math.min(beta, score);
+            if (beta < alpha) { return beta; }
+            good += 0.1 * score;
+            if (score < min) { min = score; }
+            b = new Board(this);
+            b.cells[r][c] = 2;
+            score = b.expectedGoodnessRecursive(depth-1, alpha, beta, map); 
+            beta = Math.min(beta, score);
+            if (beta < alpha) { return beta; }
+            good += 0.9 * score;
+>>>>>>> a8cb364a6bab70335be5075ee03139d9909753c9
+>>>>>>> */
             if (score < min) { min = score; }
             count++;
           }
         }
       }
       return (count > 0 ? min : 0.0);
+/*
+      //System.out.println("min " + min);
+      if (count == 0) { return -100000.0; }
+      else { 
+        map.put(state, beta);
+        return beta;
+      }
+>>>>>>> a8cb364a6bab70335be5075ee03139d9909753c9
+>>>>>>> */
     }
   }
+
+  public static int log2(int x) {
+    if (x == 0) { return 0; }
+    int log = 1;
+    while (x > 2) {
+      x = x / 2;
+      log++;
+    }
+    return log;
+  }
+      
           
-   
 
   public double expectedGoodness() {
+    HashMap<String, Double> map = new HashMap<String, Double>();
 /*
     double goodness = 0.0;
     for (int r = 0; r < rows; r++) {
@@ -476,17 +551,31 @@ class Board implements Comparator<Board> {
     Board copy = new Board(this);
     copy.cells[r][c] = val;
     return copy;
+    
+    //return -badness();
+    //return goodness + Math.random();
+  }
+
+  public static int diff(int x, int y) {
+    //if (x == 0 || y == 0) { return 0; }
+    int logx = Board.log2(x);
+    int logy = Board.log2(y);
+    //return (x > y ? logx-logy : logy-logx);
+    return (x > y ? x - y : y - x);
   }
         
 
-  public int badness() {
-    int bad = 0;
-    for (int r = 0; r < rows - 1; r++) {
-      for (int c = 0; c < cols - 1; c++) {
-        bad += Math.abs(cells[r][c] - cells[r][c+1]);
-        bad += Math.abs(cells[r][c] - cells[r+1][c]);
+  public double badness() {
+    double bad = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        if (r > 0) bad += Math.pow(diff(cells[r][c], cells[r-1][c]), 0.65);
+        if (r < rows-1) bad += Math.pow(diff(cells[r][c], cells[r+1][c]), 0.65);
+        if (c > 0) bad += Math.pow(diff(cells[r][c], cells[r][c-1]), 0.65);
+        if (c < cols-1) bad += Math.pow(diff(cells[r][c], cells[r][c+1]), 0.65);
       }
     }
+    //System.out.println("badness: " + bad);
     return bad;
   }
 
@@ -880,6 +969,24 @@ public class Play2048 {
     b = Board.awesomeBoard();
     //Board minmax = b.minimax(6);
     //System.out.println("best minimax:\n" + minmax);
+    if (false) {
+      b.cells[1][0] = 0;
+      b.cells[1][1] = 2;
+      b.cells[1][2] = 2;
+      b.cells[1][3] = 4;
+      b.cells[2][0] = 64;
+      b.cells[2][1] = 32;
+      b.cells[2][2] = 16;
+      b.cells[2][3] = 8;
+      b.cells[3][0] = 128;
+      b.cells[3][1] = 256;
+      b.cells[3][2] = 512;
+      b.cells[3][3] = 1024;
+    } else {
+      b.fillRandomCell();
+      b.fillRandomCell();
+    }
+
     while (b.gameState() == 1) {
       System.out.println("Board:\n" + b);
       String bestMove = b.bestMove();
@@ -909,7 +1016,7 @@ public class Play2048 {
       Board best = left;
       System.out.println("left score: " + bestScore);
       if (b.equals(left)) {
-        bestScore = -100000000;
+        bestScore = -10000000;
       }
       
       Board right = b.copyRight();
@@ -944,6 +1051,7 @@ public class Play2048 {
       b.fillRandomCell();
 //      state = b.gameState();
     }
+<<<<<<< HEAD
 */
     System.out.println("Final board:\n" + b);
   }
