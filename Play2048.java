@@ -1,6 +1,8 @@
 import java.io.*;
 import java.util.*;
 
+// This is just a comment to have some code change to commit
+
 class Perceptron {
   private double[] weights;
   private int size;
